@@ -11,13 +11,20 @@ import java.util.function.Predicate;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.karimo.mpulse_ehr.models.CurrencyConversion;
 import com.karimo.mpulse_ehr.models.HealthProvider;
 
 public class Main {
-    static final String ENDPOINT = "https://www.healthit.gov/data/open-api?source=Meaningful-Use-Acceleration-Scorecard.csv";
+    static final String ENDPOINT = "https://currency-converter18.p.rapidapi.com/api/v1/convert?";
     public static void main(String[] args) {
+        String endpointArgs = "from=EUR&to=USD&amount=10";
         HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder().GET().uri(URI.create(ENDPOINT)).build();
+        HttpRequest request = HttpRequest.newBuilder()
+        .GET()
+        .header("x-rapidapi-key", "e14d9e09a5msh348b2bda8798db2p15d68cjsn1f2e7d7c5740")
+        .header("x-rapidapi-host", "currency-converter18.p.rapidapi.com")
+        .uri(URI.create(ENDPOINT + endpointArgs))
+        .build();
         
         HttpResponse<String> response = null;
         try{
@@ -29,25 +36,19 @@ public class Main {
         catch(InterruptedException i_ex) {
             i_ex.printStackTrace();
         }
-        Gson gson = new Gson();
-        ArrayList<HealthProvider> healthProviders = null;
-        try {
-            healthProviders = gson.fromJson(response.body(), new TypeToken<ArrayList<HealthProvider>>(){}.getType());
+        if(response.statusCode() == 200) {
+            Gson gson = new Gson();
+            CurrencyConversion currencyRecord = null;
+            try {
+                currencyRecord = gson.fromJson(response.body(), CurrencyConversion.class);
+            }
+            catch(Exception convertException) {
+                convertException.printStackTrace();
+            }
+            System.out.println(currencyRecord.toString());
         }
-        catch(Exception convertException) {
-            convertException.printStackTrace();
-        }
-        //some cleaning up
-        Predicate<HealthProvider> isNullValues = n -> n.period == null || n.region == null;
-        healthProviders.removeIf(isNullValues);
-        Predicate<HealthProvider> isNot2014 = n -> !n.period.equals("2014");
-        healthProviders.removeIf(isNot2014);
-        Predicate<HealthProvider> isNationalRegion = n -> n.region.equals("National");
-        healthProviders.removeIf(isNationalRegion);
-
-        for(int i = healthProviders.size() - 1; i >= 0; i--) {
-            System.out.println("State: " + healthProviders.get(i).region + 
-                " -- Percentage: " + (100 * Double.parseDouble(healthProviders.get(i).pct_hospitals_mu)));
+        else {
+            System.out.println("Tried calling the API, returned: " + response.statusCode());
         }
     }
 }
